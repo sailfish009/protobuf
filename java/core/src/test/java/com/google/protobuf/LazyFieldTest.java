@@ -32,8 +32,6 @@ package com.google.protobuf;
 
 import protobuf_unittest.UnittestProto.TestAllExtensions;
 import protobuf_unittest.UnittestProto.TestAllTypes;
-
-import java.io.IOException;
 import junit.framework.TestCase;
 
 /**
@@ -44,8 +42,7 @@ import junit.framework.TestCase;
 public class LazyFieldTest extends TestCase {
   public void testHashCode() {
     MessageLite message = TestUtil.getAllSet();
-    LazyField lazyField =
-        createLazyFieldFromMessage(message);
+    LazyField lazyField = createLazyFieldFromMessage(message);
     assertEquals(message.hashCode(), lazyField.hashCode());
     lazyField.getValue();
     assertEquals(message.hashCode(), lazyField.hashCode());
@@ -90,6 +87,7 @@ public class LazyFieldTest extends TestCase {
     assertFalse(message.equals(lazyField.getValue()));
   }
 
+  @SuppressWarnings("EqualsIncompatibleType") // LazyField.equals() is not symmetric
   public void testEqualsObjectEx() throws Exception {
     TestAllExtensions message = TestUtil.getAllExtensionsSet();
     LazyField lazyField = createLazyFieldFromMessage(message);
@@ -103,8 +101,8 @@ public class LazyFieldTest extends TestCase {
 
   private LazyField createLazyFieldFromMessage(MessageLite message) {
     ByteString bytes = message.toByteString();
-    return new LazyField(message.getDefaultInstanceForType(),
-        TestUtil.getExtensionRegistry(), bytes);
+    return new LazyField(
+        message.getDefaultInstanceForType(), TestUtil.getExtensionRegistry(), bytes);
   }
 
   private void changeValue(LazyField lazyField) {
@@ -115,7 +113,6 @@ public class LazyFieldTest extends TestCase {
   }
 
   private void assertNotEqual(Object unexpected, Object actual) {
-    assertFalse(unexpected == actual
-        || (unexpected != null && unexpected.equals(actual)));
+    assertFalse(unexpected == actual || (unexpected != null && unexpected.equals(actual)));
   }
 }

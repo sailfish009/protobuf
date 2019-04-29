@@ -32,11 +32,8 @@
 #include <string>
 
 #include <google/protobuf/compiler/objectivec/objectivec_map_field.h>
-#include <google/protobuf/stubs/common.h>
 #include <google/protobuf/compiler/objectivec/objectivec_helpers.h>
 #include <google/protobuf/io/printer.h>
-#include <google/protobuf/stubs/strutil.h>
-#include <google/protobuf/stubs/substitute.h>
 
 namespace google {
 namespace protobuf {
@@ -115,7 +112,7 @@ MapFieldGenerator::MapFieldGenerator(const FieldDescriptor* descriptor,
   if (value_field_flags.find("GPBFieldHasEnumDescriptor") != string::npos) {
     field_flags.push_back("GPBFieldHasEnumDescriptor");
   }
-  variables_["fieldflags"] = BuildFlagsString(field_flags);
+  variables_["fieldflags"] = BuildFlagsString(FLAGTYPE_FIELD, field_flags);
 
   ObjectiveCType value_objc_type = GetObjectiveCType(value_descriptor);
   const bool value_is_object_type =
@@ -140,13 +137,18 @@ MapFieldGenerator::MapFieldGenerator(const FieldDescriptor* descriptor,
           value_field_generator_->variable("storage_type") + "*>";
     }
   }
+
+  variables_["dataTypeSpecific_name"] =
+      value_field_generator_->variable("dataTypeSpecific_name");
+  variables_["dataTypeSpecific_value"] =
+      value_field_generator_->variable("dataTypeSpecific_value");
 }
 
 MapFieldGenerator::~MapFieldGenerator() {}
 
 void MapFieldGenerator::FinishInitialization(void) {
   RepeatedFieldGenerator::FinishInitialization();
-  // Use the array_comment suport in RepeatedFieldGenerator to output what the
+  // Use the array_comment support in RepeatedFieldGenerator to output what the
   // values in the map are.
   const FieldDescriptor* value_descriptor =
       descriptor_->message_type()->FindFieldByName("value");
@@ -156,15 +158,8 @@ void MapFieldGenerator::FinishInitialization(void) {
   }
 }
 
-void MapFieldGenerator::GenerateFieldDescriptionTypeSpecific(
-    io::Printer* printer) const {
-  // Relay it to the value generator to provide enum validator, message
-  // class, etc.
-  value_field_generator_->GenerateFieldDescriptionTypeSpecific(printer);
-}
-
 void MapFieldGenerator::DetermineForwardDeclarations(
-    set<string>* fwd_decls) const {
+    std::set<string>* fwd_decls) const {
   RepeatedFieldGenerator::DetermineForwardDeclarations(fwd_decls);
   const FieldDescriptor* value_descriptor =
       descriptor_->message_type()->FindFieldByName("value");

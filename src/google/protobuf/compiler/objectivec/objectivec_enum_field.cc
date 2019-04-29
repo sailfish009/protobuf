@@ -32,11 +32,9 @@
 #include <string>
 
 #include <google/protobuf/compiler/objectivec/objectivec_enum_field.h>
-#include <google/protobuf/stubs/common.h>
 #include <google/protobuf/compiler/objectivec/objectivec_helpers.h>
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/wire_format.h>
-#include <google/protobuf/stubs/strutil.h>
 
 namespace google {
 namespace protobuf {
@@ -46,7 +44,7 @@ namespace objectivec {
 namespace {
 
 void SetEnumVariables(const FieldDescriptor* descriptor,
-                      map<string, string>* variables) {
+                      std::map<string, string>* variables) {
   string type = EnumName(descriptor->enum_type());
   (*variables)["storage_type"] = type;
   // For non repeated fields, if it was defined in a different file, the
@@ -58,6 +56,9 @@ void SetEnumVariables(const FieldDescriptor* descriptor,
   }
   (*variables)["enum_verifier"] = type + "_IsValidValue";
   (*variables)["enum_desc_func"] = type + "_EnumDescriptor";
+
+  (*variables)["dataTypeSpecific_name"] = "enumDescFunc";
+  (*variables)["dataTypeSpecific_value"] = (*variables)["enum_desc_func"];
 
   const Descriptor* msg_descriptor = descriptor->containing_type();
   (*variables)["owning_message_class"] = ClassName(msg_descriptor);
@@ -72,13 +73,6 @@ EnumFieldGenerator::EnumFieldGenerator(const FieldDescriptor* descriptor,
 
 EnumFieldGenerator::~EnumFieldGenerator() {}
 
-void EnumFieldGenerator::GenerateFieldDescriptionTypeSpecific(
-    io::Printer* printer) const {
-  printer->Print(
-      variables_,
-      "  .dataTypeSpecific.enumDescFunc = $enum_desc_func$,\n");
-}
-
 void EnumFieldGenerator::GenerateCFunctionDeclarations(
     io::Printer* printer) const {
   if (!HasPreservingUnknownEnumSemantics(descriptor_->file())) {
@@ -87,7 +81,16 @@ void EnumFieldGenerator::GenerateCFunctionDeclarations(
 
   printer->Print(
       variables_,
+      "/**\n"
+      " * Fetches the raw value of a @c $owning_message_class$'s @c $name$ property, even\n"
+      " * if the value was not defined by the enum at the time the code was generated.\n"
+      " **/\n"
       "int32_t $owning_message_class$_$capitalized_name$_RawValue($owning_message_class$ *message);\n"
+      "/**\n"
+      " * Sets the raw value of an @c $owning_message_class$'s @c $name$ property, allowing\n"
+      " * it to be set to a value that was not defined by the enum at the time the code\n"
+      " * was generated.\n"
+      " **/\n"
       "void Set$owning_message_class$_$capitalized_name$_RawValue($owning_message_class$ *message, int32_t value);\n"
       "\n");
 }
@@ -113,7 +116,7 @@ void EnumFieldGenerator::GenerateCFunctionImplementations(
 }
 
 void EnumFieldGenerator::DetermineForwardDeclarations(
-    set<string>* fwd_decls) const {
+    std::set<string>* fwd_decls) const {
   SingleFieldGenerator::DetermineForwardDeclarations(fwd_decls);
   // If it is an enum defined in a different file, then we'll need a forward
   // declaration for it.  When it is in our file, all the enums are output
@@ -138,13 +141,6 @@ void RepeatedEnumFieldGenerator::FinishInitialization(void) {
   RepeatedFieldGenerator::FinishInitialization();
   variables_["array_comment"] =
       "// |" + variables_["name"] + "| contains |" + variables_["storage_type"] + "|\n";
-}
-
-void RepeatedEnumFieldGenerator::GenerateFieldDescriptionTypeSpecific(
-    io::Printer* printer) const {
-  printer->Print(
-      variables_,
-      "  .dataTypeSpecific.enumDescFunc = $enum_desc_func$,\n");
 }
 
 }  // namespace objectivec

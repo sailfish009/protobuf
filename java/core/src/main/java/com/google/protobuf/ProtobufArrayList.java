@@ -31,39 +31,44 @@
 package com.google.protobuf;
 
 import com.google.protobuf.Internal.ProtobufList;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Implements {@link ProtobufList} for non-primitive and {@link String} types.
- */
-class ProtobufArrayList<E> extends AbstractProtobufList<E> {
+/** Implements {@link ProtobufList} for non-primitive and {@link String} types. */
+final class ProtobufArrayList<E> extends AbstractProtobufList<E> {
 
-  private static final ProtobufArrayList<Object> EMPTY_LIST = new ProtobufArrayList<Object>();
+  private static final ProtobufArrayList<Object> EMPTY_LIST =
+      new ProtobufArrayList<Object>(new ArrayList<Object>(0));
+
   static {
     EMPTY_LIST.makeImmutable();
   }
-  
+
   @SuppressWarnings("unchecked") // Guaranteed safe by runtime.
   public static <E> ProtobufArrayList<E> emptyList() {
     return (ProtobufArrayList<E>) EMPTY_LIST;
   }
-  
+
   private final List<E> list;
-  
+
   ProtobufArrayList() {
-    list = new ArrayList<E>();
+    this(new ArrayList<E>(DEFAULT_CAPACITY));
   }
-  
-  ProtobufArrayList(List<E> toCopy) {
-    list = new ArrayList<E>(toCopy);
+
+  private ProtobufArrayList(List<E> list) {
+    this.list = list;
   }
-  
-  ProtobufArrayList(int capacity) {
-    list = new ArrayList<E>(capacity);
+
+  @Override
+  public ProtobufArrayList<E> mutableCopyWithCapacity(int capacity) {
+    if (capacity < size()) {
+      throw new IllegalArgumentException();
+    }
+    List<E> newList = new ArrayList<E>(capacity);
+    newList.addAll(list);
+    return new ProtobufArrayList<E>(newList);
   }
-  
+
   @Override
   public void add(int index, E element) {
     ensureIsMutable();
@@ -75,7 +80,7 @@ class ProtobufArrayList<E> extends AbstractProtobufList<E> {
   public E get(int index) {
     return list.get(index);
   }
-  
+
   @Override
   public E remove(int index) {
     ensureIsMutable();
@@ -83,7 +88,7 @@ class ProtobufArrayList<E> extends AbstractProtobufList<E> {
     modCount++;
     return toReturn;
   }
-  
+
   @Override
   public E set(int index, E element) {
     ensureIsMutable();

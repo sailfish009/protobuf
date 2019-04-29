@@ -34,6 +34,8 @@
 #include <google/protobuf/stubs/common.h>
 #include <google/protobuf/stubs/stringpiece.h>
 
+#include <google/protobuf/port_def.inc>
+
 namespace google {
 namespace protobuf {
 namespace util {
@@ -55,7 +57,7 @@ class DataPiece;
 //
 // TODO(xinb): seems like a prime candidate to apply the RAII paradigm
 // and get rid the need to call EndXXX().
-class LIBPROTOBUF_EXPORT ObjectWriter {
+class PROTOBUF_EXPORT ObjectWriter {
  public:
   virtual ~ObjectWriter() {}
 
@@ -93,7 +95,8 @@ class LIBPROTOBUF_EXPORT ObjectWriter {
   virtual ObjectWriter* RenderFloat(StringPiece name, float value) = 0;
 
   // Renders a StringPiece value. This is for rendering strings.
-  virtual ObjectWriter* RenderString(StringPiece name, StringPiece value) = 0;
+  virtual ObjectWriter* RenderString(StringPiece name,
+                                     StringPiece value) = 0;
 
   // Renders a bytes value.
   virtual ObjectWriter* RenderBytes(StringPiece name, StringPiece value) = 0;
@@ -101,14 +104,32 @@ class LIBPROTOBUF_EXPORT ObjectWriter {
   // Renders a Null value.
   virtual ObjectWriter* RenderNull(StringPiece name) = 0;
 
+
   // Renders a DataPiece object to a ObjectWriter.
   static void RenderDataPieceTo(const DataPiece& data, StringPiece name,
                                 ObjectWriter* ow);
 
+  // Indicates whether this ObjectWriter has completed writing the root message,
+  // usually this means writing of one complete object. Subclasses must override
+  // this behavior appropriately.
+  virtual bool done() { return false; }
+
+  void set_use_strict_base64_decoding(bool value) {
+    use_strict_base64_decoding_ = value;
+  }
+
+  bool use_strict_base64_decoding() const {
+    return use_strict_base64_decoding_;
+  }
+
  protected:
-  ObjectWriter() {}
+  ObjectWriter() : use_strict_base64_decoding_(true) {}
 
  private:
+  // If set to true, we use the stricter version of base64 decoding for byte
+  // fields by making sure decoded version encodes back to the original string.
+  bool use_strict_base64_decoding_;
+
   // Do not add any data members to this class.
   GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ObjectWriter);
 };
@@ -116,6 +137,8 @@ class LIBPROTOBUF_EXPORT ObjectWriter {
 }  // namespace converter
 }  // namespace util
 }  // namespace protobuf
-
 }  // namespace google
+
+#include <google/protobuf/port_undef.inc>
+
 #endif  // GOOGLE_PROTOBUF_UTIL_CONVERTER_OBJECT_WRITER_H__

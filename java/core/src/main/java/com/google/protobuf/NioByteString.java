@@ -30,46 +30,40 @@
 
 package com.google.protobuf;
 
-import java.io.FileOutputStream;
+import static com.google.protobuf.Internal.checkNotNull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.InvalidMarkException;
-import java.nio.channels.Channels;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * A {@link ByteString} that wraps around a {@link ByteBuffer}.
- */
+/** A {@link ByteString} that wraps around a {@link ByteBuffer}. */
 final class NioByteString extends ByteString.LeafByteString {
   private final ByteBuffer buffer;
 
   NioByteString(ByteBuffer buffer) {
-    if (buffer == null) {
-      throw new NullPointerException("buffer");
-    }
+    checkNotNull(buffer, "buffer");
 
-    this.buffer = buffer.slice();
+    // Use native byte order for fast fixed32/64 operations.
+    this.buffer = buffer.slice().order(ByteOrder.nativeOrder());
   }
 
   // =================================================================
   // Serializable
 
-  /**
-   * Magic method that lets us override serialization behavior.
-   */
+  /** Magic method that lets us override serialization behavior. */
   private Object writeReplace() {
     return ByteString.copyFrom(buffer.slice());
   }
 
-  /**
-   * Magic method that lets us override deserialization behavior.
-   */
+  /** Magic method that lets us override deserialization behavior. */
   private void readObject(@SuppressWarnings("unused") ObjectInputStream in) throws IOException {
     throw new InvalidObjectException("NioByteString instances are not to be serialized directly");
   }
@@ -85,6 +79,13 @@ final class NioByteString extends ByteString.LeafByteString {
     } catch (IndexOutOfBoundsException e) {
       throw new ArrayIndexOutOfBoundsException(e.getMessage());
     }
+  }
+
+  @Override
+  public byte internalByteAt(int index) {
+    // it isn't possible to avoid the bounds checking inside of ByteBuffer, so just use the default
+    // implementation.
+    return byteAt(index);
   }
 
   @Override
@@ -119,7 +120,7 @@ final class NioByteString extends ByteString.LeafByteString {
 
   @Override
   public void writeTo(OutputStream out) throws IOException {
-    writeToInternal(out, buffer.position(), buffer.remaining());
+    out.write(toByteArray());
   }
 
   @Override
@@ -137,14 +138,12 @@ final class NioByteString extends ByteString.LeafByteString {
       return;
     }
 
-    // Slow path
-    if (out instanceof FileOutputStream || numberToWrite >= 8192) {
-      // Use a channel to write out the ByteBuffer.
-      Channels.newChannel(out).write(slice(sourceOffset, sourceOffset + numberToWrite));
-    } else {
-      // Just copy the data to an array and write it.
-      out.write(toByteArray());
-    }
+    ByteBufferWriter.write(slice(sourceOffset, sourceOffset + numberToWrite), out);
+  }
+
+  @Override
+  void writeTo(ByteOutput output) throws IOException {
+    output.writeLazy(buffer.slice());
   }
 
   @Override
@@ -159,46 +158,30 @@ final class NioByteString extends ByteString.LeafByteString {
 
   @Override
   protected String toStringInternal(Charset charset) {
-    byte[] bytes;
-    int offset;
+    final byte[] bytes;
+    final int offset;
+    final int length;
     if (buffer.hasArray()) {
       bytes = buffer.array();
       offset = buffer.arrayOffset() + buffer.position();
+      length = buffer.remaining();
     } else {
+      // TODO(nathanmittler): Can we optimize this?
       bytes = toByteArray();
       offset = 0;
+      length = bytes.length;
     }
-    return new String(bytes, offset, size(), charset);
+    return new String(bytes, offset, length, charset);
   }
 
   @Override
   public boolean isValidUtf8() {
-    // TODO(nathanmittler): add a ByteBuffer fork for Utf8.isValidUtf8 to avoid the copy
-    byte[] bytes;
-    int startIndex;
-    if (buffer.hasArray()) {
-      bytes = buffer.array();
-      startIndex = buffer.arrayOffset() + buffer.position();
-    } else {
-      bytes = toByteArray();
-      startIndex = 0;
-    }
-    return Utf8.isValidUtf8(bytes, startIndex, startIndex + size());
+    return Utf8.isValidUtf8(buffer);
   }
 
   @Override
   protected int partialIsValidUtf8(int state, int offset, int length) {
-    // TODO(nathanmittler): TODO add a ByteBuffer fork for Utf8.partialIsValidUtf8 to avoid the copy
-    byte[] bytes;
-    int startIndex;
-    if (buffer.hasArray()) {
-      bytes = buffer.array();
-      startIndex = buffer.arrayOffset() + buffer.position();
-    } else {
-      bytes = toByteArray();
-      startIndex = 0;
-    }
-    return Utf8.partialIsValidUtf8(state, bytes, startIndex, startIndex + size());
+    return Utf8.partialIsValidUtf8(state, buffer, offset, offset + length);
   }
 
   @Override
@@ -285,7 +268,7 @@ final class NioByteString extends ByteString.LeafByteString {
 
   @Override
   public CodedInputStream newCodedInput() {
-    return CodedInputStream.newInstance(buffer);
+    return CodedInputStream.newInstance(buffer, true);
   }
 
   /**

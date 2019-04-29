@@ -41,27 +41,6 @@ namespace google {
 namespace protobuf {
 namespace internal {
 template<typename T>
-bool IsNan(T value) {
-  return false;
-}
-template<>
-inline bool IsNan(float value) {
-#ifdef _MSC_VER
-  return _isnan(value);
-#else
-  return isnan(value);
-#endif
-}
-template<>
-inline bool IsNan(double value) {
-#ifdef _MSC_VER
-  return _isnan(value);
-#else
-  return isnan(value);
-#endif
-}
-
-template<typename T>
 bool AlmostEquals(T a, T b) {
   return a == b;
 }
@@ -80,15 +59,15 @@ class MathUtil {
  public:
   template<typename T>
   static T Sign(T value) {
-    if (value == T(0) || ::google::protobuf::internal::IsNan<T>(value)) {
+    if (value == T(0) || MathLimits<T>::IsNaN(value)) {
       return value;
     }
-    return value > T(0) ? value : -value;
+    return value > T(0) ? 1 : -1;
   }
 
   template<typename T>
   static bool AlmostEquals(T a, T b) {
-    return ::google::protobuf::internal::AlmostEquals(a, b);
+    return internal::AlmostEquals(a, b);
   }
 
   // Largest of two values.

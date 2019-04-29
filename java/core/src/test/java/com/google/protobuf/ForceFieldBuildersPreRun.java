@@ -31,17 +31,16 @@
 package com.google.protobuf;
 
 /**
- * A prerun for a test suite that allows running the full protocol buffer
- * tests in a mode that disables the optimization for not using
- * {@link RepeatedFieldBuilder} and {@link SingleFieldBuilder} until they are
- * requested. This allows us to run all the tests through both code paths
- * and ensures that both code paths produce identical results.
+ * A prerun for a test suite that allows running the full protocol buffer tests in a mode that
+ * disables the optimization for not using {@link RepeatedFieldBuilder} and {@link
+ * SingleFieldBuilder} until they are requested. This allows us to run all the tests through both
+ * code paths and ensures that both code paths produce identical results.
  *
  * @author jonp@google.com (Jon Perlow)
  */
 public class ForceFieldBuildersPreRun implements Runnable {
 
-  //@Override (Java 1.6 override semantics, but we must support 1.5)
+  @Override
   public void run() {
     GeneratedMessage.enableAlwaysUseFieldBuildersForTesting();
   }

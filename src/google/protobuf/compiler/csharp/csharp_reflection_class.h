@@ -35,6 +35,8 @@
 
 #include <google/protobuf/compiler/code_generator.h>
 #include <google/protobuf/compiler/csharp/csharp_source_generator_base.h>
+#include <google/protobuf/descriptor.h>
+#include <google/protobuf/io/printer.h>
 
 namespace google {
 namespace protobuf {
@@ -43,8 +45,11 @@ namespace csharp {
 
 class ReflectionClassGenerator : public SourceGeneratorBase {
  public:
-  ReflectionClassGenerator(const FileDescriptor* file);
+  ReflectionClassGenerator(const FileDescriptor* file, const Options* options);
   ~ReflectionClassGenerator();
+
+  ReflectionClassGenerator(const ReflectionClassGenerator&) = delete;
+  ReflectionClassGenerator& operator=(const ReflectionClassGenerator&) = delete;
 
   void Generate(io::Printer* printer);
 
@@ -56,9 +61,9 @@ class ReflectionClassGenerator : public SourceGeneratorBase {
 
   void WriteIntroduction(io::Printer* printer);
   void WriteDescriptor(io::Printer* printer);
-  void WriteGeneratedCodeInfo(const Descriptor* descriptor, io::Printer* printer, bool last);
-
-  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(ReflectionClassGenerator);
+  void WriteGeneratedCodeInfo(const Descriptor* descriptor,
+                              io::Printer* printer,
+                              bool last);
 };
 
 }  // namespace csharp

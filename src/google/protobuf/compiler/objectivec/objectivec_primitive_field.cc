@@ -31,14 +31,12 @@
 #include <map>
 #include <string>
 
-#include <google/protobuf/compiler/objectivec/objectivec_primitive_field.h>
-#include <google/protobuf/stubs/common.h>
 #include <google/protobuf/compiler/objectivec/objectivec_helpers.h>
+#include <google/protobuf/compiler/objectivec/objectivec_primitive_field.h>
 #include <google/protobuf/io/printer.h>
-#include <google/protobuf/wire_format.h>
-#include <google/protobuf/wire_format_lite_inl.h>
 #include <google/protobuf/stubs/strutil.h>
-#include <google/protobuf/stubs/substitute.h>
+#include <google/protobuf/wire_format.h>
+#include <google/protobuf/wire_format_lite.h>
 
 namespace google {
 namespace protobuf {
@@ -118,7 +116,7 @@ const char* PrimitiveArrayTypeName(const FieldDescriptor* descriptor) {
 }
 
 void SetPrimitiveVariables(const FieldDescriptor* descriptor,
-                           map<string, string>* variables) {
+                           std::map<string, string>* variables) {
   std::string primitive_name = PrimitiveTypeName(descriptor);
   (*variables)["type"] = primitive_name;
   (*variables)["storage_type"] = primitive_name;
@@ -133,6 +131,32 @@ PrimitiveFieldGenerator::PrimitiveFieldGenerator(
 }
 
 PrimitiveFieldGenerator::~PrimitiveFieldGenerator() {}
+
+void PrimitiveFieldGenerator::GenerateFieldStorageDeclaration(
+    io::Printer* printer) const {
+  if (GetObjectiveCType(descriptor_) == OBJECTIVECTYPE_BOOLEAN) {
+    // Nothing, BOOLs are stored in the has bits.
+  } else {
+    SingleFieldGenerator::GenerateFieldStorageDeclaration(printer);
+  }
+}
+
+int PrimitiveFieldGenerator::ExtraRuntimeHasBitsNeeded(void) const {
+  if (GetObjectiveCType(descriptor_) == OBJECTIVECTYPE_BOOLEAN) {
+    // Reserve a bit for the storage of the boolean.
+    return 1;
+  }
+  return 0;
+}
+
+void PrimitiveFieldGenerator::SetExtraRuntimeHasBitsBase(int has_base) {
+  if (GetObjectiveCType(descriptor_) == OBJECTIVECTYPE_BOOLEAN) {
+    // Set into the offset the has bit to use for the actual value.
+    variables_["storage_offset_value"] = StrCat(has_base);
+    variables_["storage_offset_comment"] =
+        "  // Stored in _has_storage_ to save space.";
+  }
+}
 
 PrimitiveObjFieldGenerator::PrimitiveObjFieldGenerator(
     const FieldDescriptor* descriptor, const Options& options)
